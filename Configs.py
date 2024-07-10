@@ -3,7 +3,7 @@ from screeninfo import get_monitors
 
 
 # Defina o tamanho da janela (largura, altura)
-window.size = (1024, 768)
+window.size = (1600, 960)
 
 # Obtenha a resolução da tela
 monitor = get_monitors()[0]
