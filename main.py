@@ -1,94 +1,148 @@
 from ursina import *
 from ursina.prefabs.first_person_controller import FirstPersonController
-from Configs import *
-from Chunks import *
+from perlin_noise import PerlinNoise
+import random
+import math
+
+noise = PerlinNoise(octaves=3, seed=random.randint(1, 1000))
+
 app = Ursina()
-# Define as dimensões do mundo
-window.title = "Mundo"
 
+def is_block_at(position):
+    return any([block.position == position for block in scene.entities if isinstance(block, Block)])
 
-'''
-# Define a classe Voxel
-class Voxel(Button):
-    def __init__(self, position=(0, 0, 0)):
+selected_block = "grass"
+
+player = FirstPersonController(
+    mouse_sensitivity=Vec2(100, 100),
+    position=(0, 5, 0)
+)
+
+block_textures = {
+    "grass": load_texture("textures/grass.png"),
+    "dirt": load_texture("textures/dirt.png"),
+    "stone": load_texture("textures/stone.png"),
+    "bedrock": load_texture("textures/bedrock.png"),
+    "log": load_texture("textures/log_side.png"),
+    "leaves": load_texture("textures/leaves.png"),
+}
+
+class Block(Entity):
+    def __init__(self, position, block_type):
         super().__init__(
-            parent=scene,
             position=position,
-            model='cube',
-            color=color.hsv(0, 0, random.uniform(.9, 1.0)),
-            highlight_color=color.white,
+            model=None,
+            scale=1,
+            origin_y=0,
+            texture=block_textures.get(block_type),
+            collider="box"
         )
-        # Aplica a textura com base na posição y do voxel
-        if position[1] >= Altura:
-            self.Grass()
-        elif position[1] < Altura:
-            self.Dirt()
+        self.block_type = block_type
+        self.update_model()
 
-    def Grass(self):
-        self.texture = 'grass.png'
+    def update_model(self):
+        vertices = []
+        triangles = []
+        uvs = []
 
-    def Dirt(self):
-        self.texture = 'dirt.png'
-'''
-        
+        directions = [
+            Vec3(1, 0, 0), Vec3(-1, 0, 0),
+            Vec3(0, 1, 0), Vec3(0, -1, 0),
+            Vec3(0, 0, 1), Vec3(0, 0, -1)
+        ]
+
+        face_vertices = [
+            [(-0.5, -0.5, 0.5), (0.5, -0.5, 0.5), (0.5, 0.5, 0.5), (-0.5, 0.5, 0.5)],  # Frente
+            [(0.5, -0.5, -0.5), (-0.5, -0.5, -0.5), (-0.5, 0.5, -0.5), (0.5, 0.5, -0.5)],  # Trás
+            [(-0.5, 0.5, -0.5), (0.5, 0.5, -0.5), (0.5, 0.5, 0.5), (-0.5, 0.5, 0.5)],  # Cima
+            [(-0.5, -0.5, 0.5), (0.5, -0.5, 0.5), (0.5, -0.5, -0.5), (-0.5, -0.5, -0.5)],  # Baixo
+            [(-0.5, -0.5, -0.5), (-0.5, -0.5, 0.5), (-0.5, 0.5, 0.5), (-0.5, 0.5, -0.5)],  # Esquerda
+            [(0.5, -0.5, 0.5), (0.5, -0.5, -0.5), (0.5, 0.5, -0.5), (0.5, 0.5, 0.5)]  # Direita
+        ]
+
+        face_uvs = [
+            [(0, 0), (1, 0), (1, 1), (0, 1)] for _ in range(6)
+        ]
+
+        for i, direction in enumerate(directions):
+            if not is_block_at(self.position + direction):
+                start_index = len(vertices)
+                vertices.extend(face_vertices[i])
+                triangles.extend([
+                    start_index, start_index + 1, start_index + 2,
+                    start_index, start_index + 2, start_index + 3
+                ])
+                uvs.extend(face_uvs[i])
+
+        self.model = Mesh(vertices=vertices, triangles=triangles, uvs=uvs, mode='triangle')
+
+mini_block = Entity(
+    parent=camera,
+    model="cube",
+    scale=0.5,
+    color=color.rgba(1, 1, 1, 0.5)
+)
+
+def input(key):
+  global selected_block
+  #place block
+  if key == "left mouse down":
+    hit_info = raycast(camera.world_position, camera.forward, distance=10)
+    if hit_info.hit:
+      block = Block(hit_info.entity.position + hit_info.normal, selected_block)
+  #delete block
+  if key == "right mouse down" and mouse.hovered_entity:
+    if not mouse.hovered_entity.block_type == "bedrock":
+      destroy(mouse.hovered_entity)
+  #change block type
+  if key == "1":
+    selected_block = "grass"
+  if key == '2':
+    selected_block = "dirt"
+  if key == '3':
+    selected_block = "stone"
+
+'''o bug no posicionamento da arvore se dava pelo fato da classe receber a posição dela mesma e pelo fato do tronco e das folhas terem posicionamentos distintos mas conectados oq acabava fazendo a arvore não saber as cordenadas para aparecer'''
 class Arvore(Entity):
-    def __init__(self, position=(0, 0, 0)):
+    def __init__(self, position=(0 , 0 , 0)):
         super().__init__(
             parent=scene,
-            position=position,
+            collider = 'box'
         )
         self.Tronco_arvore(position)
         self.Folhas_arvore(position)
-        
+
+
     def Tronco_arvore(self, position):
         for y in range(4):
-            Entity(
-                model='cube',
-                color=color.rgb(142,35,107),  # Cor marrom para o tronco
-                texture = 'log_side.png',
-                position=(position[0], position[1] + y, position[2]),
-                parent=self
-            )
+                Block((position[0] , position[1] + y ,position[2]), "log")
+                
+                
     def Folhas_arvore(self, position):
         topo_do_tronco = position[1] + 3
         for x in range(-1, 2):
             for z in range(-1, 2):
                 for y in range(4, 6):
-                    Folhas = Entity(
-                        model='cube',
-                        color=color.rgb(0, 255, 0),  # Cor verde para as folhas
-                        texture = 'leaves.png',
-                        position=(position[0] + x, topo_do_tronco + y - 4, position[2] + z),
-                        parent=self,
-                    )
-                
-# Criação dos voxels
-for z in range(Profundidade):
-    for x in range(Largura):
-        for y in range(Altura):
-         voxel = Voxel(position=(x, y, z))
+                    
+                        Block((position[0] + x, topo_do_tronco + y - 4 , position[2] + z), "leaves")
 
-# Criação de uma árvore em uma posição específica
-arvore = Arvore(position=(2, 1, 2))  # Ajusta a posição inicial da árvore
 
-# Função para colocar árvore ao clicar (Bug DETECTADO)
-def colocar_arvore():
-    hit_info = raycast(camera.world_position, camera.forward, distance=5)
-    if hit_info.hit:
-        # Cria uma nova árvore na posição exata onde ocorreu a colisão
-        Arvore(position=hit_info.entity.position + hit_info.normal)
-asdasdasd
+min_height = -5
+for x in range(-10, 10):
+    for z in range(-10, 10):
+        height = noise([x * 0.02, z * 0.02])
+        height = math.floor(height * 7.5)
+        for y in range(height, min_height - 1, -1):
+            if y == min_height:
+                block = Block((x, y + min_height, z), "bedrock")
+            elif y == height:
+                block = Block((x, y + min_height, z), "grass")
+                if random.random() < 0.1:
+                    Arvore(position=(x, y + min_height + 1, z))
+            elif height - y > 2:
+                block = Block((x, y + min_height, z), "stone")
+            else:
+                block = Block((x, y + min_height, z), "dirt")
 
-def input(key):
-    if key == 'left mouse down':
-        hit_info = raycast(camera.world_position, camera.forward, distance=5)
-        if hit_info.hit:
-            Voxel(position=hit_info.entity.position + hit_info.normal)
-    if key == 'right mouse down' and mouse.hovered_entity:
-        destroy(mouse.hovered_entity)
-        
-    if key == '2':
-        colocar_arvore()
-
-player = FirstPersonController()
 app.run()
+
