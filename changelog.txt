@@ -1,0 +1,36 @@
+
+// Funcionalidades Implementadas:
+
+Árvores adicionadas
+Colisões nas árvores
+Geração de mundo com o perlin noise
+Inventário simples de ordem de coleta
+Sistema de coleta e colocação de blocos
+
+
+// Funcionalidades parcialmente implementadas ou em estágio inicial
+
+Troca de itens pelo teclado
+
+
+// Próximas Implementações
+
+Melhora da organização do código fonte
+Ciclos de dias e noite
+Inventário simples (9 espaços para guardar itens agrupados )
+Hud
+Sistema de dano
+Sistema de vida
+Sistema de chunks melhorado com o perlin noise
+MELHORAR OTIMIZAÇÂO DO JOGO (PRECISA USAR OCULTAÇAO DE FACES E ENTIDADES) /// BEM FUTURAMENTE // O jogo vai ficar lagado até eu descobrir como fazer essa otimização
+
+
+
+
+
+
+
+
+// Coisas que eu quero tentar fazer um dia
+vilas lutam entri si e se aprimoram com o tempo com cada aldeao fazendo uma coisa
+naja e mais alguns chefes, que para chegar no final do jogo tem que derrotar todos
